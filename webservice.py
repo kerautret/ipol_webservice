@@ -11,8 +11,8 @@ import json
 
 class DemoStats(object):
     """ Defines pages associated to demo archive statistics """
-    @cherrypy.expose
 
+    @cherrypy.expose
     def stat(self, **kwargs):
         """
         Page of demo stat
@@ -20,38 +20,36 @@ class DemoStats(object):
         if 'demo' in kwargs:
             demo_id = kwargs['demo']
             stat = self.get_demo_stats(demo_id)
-            if stat is not None:
-                return  stat
+            if stat:
+                return json.dumps(stat)
             else:
                 return "unknow demo key: %s " % demo_id
         else:
-            return "No demo ID given. "
-    stat.exposed = True
-
+            return "no demo ID given"
 
 
     def get_demo_stats(self, demo_id):
         """
-        Get stats from id and data base
+        Get stats from id and database
         """
         demodb = os.path.abspath(os.path.join(base_dir, \
-                                  "../demo/app/%s/archive/index.db" %demo_id))
-        if os.path.isfile(demodb):
+                                 "app/%s/archive/index.db" %demo_id))
+        print demodb
+        try:
             database = sqlite3.connect(demodb)
             curs = database.cursor()
             curs.execute("select count(*) from buckets where public=1")
-            result = curs.next()
-            return json.dumps({"total exeperiments": result[0]})
-        else:
+            public = curs.next()[0]
+            curs.execute("select count(*) from buckets where public=0")
+            private = curs.next()[0]
+            return {"public": public, "private": private,
+                    "total": public + private}
+        except (IOError, sqlite3.Error):
             return None
-
-
 
 if __name__ == '__main__':
 
-    # config file and location settings
+    # location settings
     base_dir = os.path.dirname(os.path.abspath(__file__))
-    demo_dir = os.path.abspath(os.path.join(base_dir, '../demo/'))
-    app_dir = os.path.abspath(os.path.join(base_dir, '../demo/app'))
-
+    print base_dir
     cherrypy.quickstart(DemoStats())
